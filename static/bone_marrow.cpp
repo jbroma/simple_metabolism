@@ -14,7 +14,8 @@ BoneMarrow::~BoneMarrow()
 void BoneMarrow::create_rbc()
 {
     std::lock_guard lg{ _list_mutex };
-    _rbc_pool.emplace_back(20, 45, std::ref(_dp_controller));
+    if (_rbc_pool.size() < 50)
+        _rbc_pool.emplace_back(20, 45, std::ref(_dp_controller), RBC_State::NEW);
 }
 
 void BoneMarrow::run()

@@ -13,9 +13,10 @@ DigestiveSystem::~DigestiveSystem()
 
 void DigestiveSystem::supply_glucose()
 {
+    // list needs to be intact during process, rbc only when accessed
+    std::lock_guard lg{ _list_mutex };
     for (auto it = _rbc_pool.begin(); it != _rbc_pool.end(); ++it) {
         if (it->get_y() == _y && it->get_x() >= 10 && it->get_x() <= 61) {
-            std::scoped_lock lg{ it->get_rbc_mutex(), _list_mutex };
             if (it->store_glu())
                 break;
         }

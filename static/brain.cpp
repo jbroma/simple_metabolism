@@ -43,6 +43,7 @@ Brain::~Brain()
 
 void Brain::regulate_metabolism()
 {
+    // needs lock on brain mutex
     // std::array<Brain_Signal, 5> arr{ _lung_state, _heart_state, _digestive_state, _spleen_state, _bone_marrow_state };
     // // for (auto state : arr) {
     // //     if (state == Brain_Signal::ALL_GOOD) {

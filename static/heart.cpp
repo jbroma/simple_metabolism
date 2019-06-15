@@ -13,7 +13,6 @@ Heart::~Heart()
 
 void Heart::pump()
 {
-    // std::lock_guard lg{  };
     for (auto it = _rbc_pool.begin(); it != _rbc_pool.end(); ++it) {
         std::scoped_lock rbc_lg{ _list_mutex, _dp_controller.get_display_mutex() };
         it->advance_pos();
@@ -29,7 +28,7 @@ void Heart::run()
     lock.unlock();
     while (!_kill_switch) {
         for (int i = 0; i < 5; ++i) {
-            sleep_time = static_cast<int>(200 / _metabolism_speed);
+            sleep_time = static_cast<int>(20 / _metabolism_speed);
             std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
             pump();
             std::lock_guard lg{ _dp_controller.get_display_mutex() };

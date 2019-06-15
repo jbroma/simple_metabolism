@@ -82,12 +82,12 @@ int main(int argc, char** argv)
     //std::thread test_thread(&Display::main_loop, &display_controller);
     std::list<RBC> rbc_pool;
     std::mutex list_mutex;
-    rbc_pool.emplace_back(0, 5, display_controller);
-    rbc_pool.emplace_back(10, 0, display_controller);
-    rbc_pool.emplace_back(15, 0, display_controller);
-    rbc_pool.emplace_back(20, 0, display_controller);
-    rbc_pool.emplace_back(25, 0, display_controller);
-    rbc_pool.emplace_back(35, 0, display_controller);
+    rbc_pool.emplace_back(0, 5, display_controller, RBC_State::INIT);
+    rbc_pool.emplace_back(10, 0, display_controller, RBC_State::INIT);
+    rbc_pool.emplace_back(15, 0, display_controller, RBC_State::INIT);
+    rbc_pool.emplace_back(20, 0, display_controller, RBC_State::INIT);
+    rbc_pool.emplace_back(25, 0, display_controller, RBC_State::INIT);
+    rbc_pool.emplace_back(35, 0, display_controller, RBC_State::INIT);
     Lungs lungs{ 0, display_controller, rbc_pool, list_mutex };
     Heart heart{ 13, display_controller, rbc_pool, list_mutex };
     DigestiveSystem dgs{ 29, display_controller, rbc_pool, list_mutex };

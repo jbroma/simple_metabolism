@@ -13,11 +13,10 @@ Spleen::~Spleen()
 
 void Spleen::destroy_rbc()
 {
-
+    std::lock_guard lg{ _list_mutex };
     for (auto it = _rbc_pool.begin(); it != _rbc_pool.end(); ++it) {
         if (it->get_y() == _y && it->get_x() >= 10 && it->get_x() <= 61) {
             if (it->get_dstate() == RBC_State::OLD || it->get_dstate() == RBC_State::DECAYED) {
-                std::scoped_lock scl{ _list_mutex, it->get_rbc_mutex() };
                 it->destroy();
                 _rbc_pool.erase(it);
                 break;
@@ -33,8 +32,8 @@ void Spleen::run()
     _dp_controller.get_start_cv().wait(lock);
     lock.unlock();
     while (!_kill_switch) {
-        for (int i = 0; i < 10; ++i) {
-            sleep_time = static_cast<int>(500 / _metabolism_speed);
+        for (int i = 0; i < 5; ++i) {
+            sleep_time = static_cast<int>(200 / _metabolism_speed);
             std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
             health_decay();
             std::lock_guard lg{ _dp_controller.get_display_mutex() };

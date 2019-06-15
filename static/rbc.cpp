@@ -2,7 +2,7 @@
 
 thread_local std::mt19937 RBC::_gen{};
 
-RBC::RBC(unsigned start_x, unsigned start_y, Display& controller)
+RBC::RBC(unsigned start_x, unsigned start_y, Display& controller, RBC_State init_state)
     : _dp_controller(controller)
     , _kill_switch(controller.get_kill_switch())
     , _start_cv(controller.get_start_cv())
@@ -16,7 +16,7 @@ RBC::RBC(unsigned start_x, unsigned start_y, Display& controller)
     , _next_y(_pos_y)
     , _dead(false)
     , _life_thread(&RBC::run, this)
-    , _state(RBC_State::NEW)
+    , _state(init_state)
 {
     std::uniform_int_distribution<> dist(95, 120);
     _days_left = dist(_gen);
@@ -24,7 +24,9 @@ RBC::RBC(unsigned start_x, unsigned start_y, Display& controller)
 
 RBC::~RBC()
 {
-    _life_thread.join();
+    if (_life_thread.joinable()) {
+        _life_thread.join();
+    }
 }
 
 void RBC::calc_new_pos()
@@ -33,7 +35,7 @@ void RBC::calc_new_pos()
     static std::bernoulli_distribution second_dist(0.40);
     static std::bernoulli_distribution third_dist(0.50);
     static std::bernoulli_distribution fourth_dist(0.60);
-
+    std::lock_guard lg{ _own_mutex };
     if (_pos_y == 0) {
         if (_pos_x == 67) {
             _next_x = _pos_x;
@@ -123,6 +125,7 @@ void RBC::calc_new_pos()
 void RBC::advance_pos()
 {
     calc_new_pos();
+    std::lock_guard lg{ _own_mutex };
     _prev_x = _pos_x;
     _prev_y = _pos_y;
     _pos_x = _next_x;
@@ -131,16 +134,19 @@ void RBC::advance_pos()
 
 unsigned RBC::get_x()
 {
+    std::lock_guard lg{ _own_mutex };
     return _pos_x;
 }
 
 unsigned RBC::get_y()
 {
+    std::lock_guard lg{ _own_mutex };
     return _pos_y;
 }
 
 bool RBC::get_o2()
 {
+    std::lock_guard lg{ _own_mutex };
     if (_o2 && _state != RBC_State::DECAYED) {
         _o2 = false;
         return true;
@@ -150,6 +156,7 @@ bool RBC::get_o2()
 
 bool RBC::get_glu()
 {
+    std::lock_guard lg{ _own_mutex };
     if (_glu && _state != RBC_State::DECAYED) {
         _glu = false;
         return true;
@@ -159,6 +166,7 @@ bool RBC::get_glu()
 
 bool RBC::get_co2()
 {
+    std::lock_guard lg{ _own_mutex };
     if (_co2 && _state != RBC_State::DECAYED) {
         _co2 = false;
         return true;
@@ -168,6 +176,7 @@ bool RBC::get_co2()
 
 bool RBC::store_co2()
 {
+    std::lock_guard lg{ _own_mutex };
     if (!_co2 && _state != RBC_State::DECAYED) {
         _co2 = true;
         return true;
@@ -177,6 +186,7 @@ bool RBC::store_co2()
 
 bool RBC::store_o2()
 {
+    std::lock_guard lg{ _own_mutex };
     if (!_o2 && _state != RBC_State::DECAYED) {
         _o2 = true;
         return true;
@@ -186,6 +196,7 @@ bool RBC::store_o2()
 
 bool RBC::store_glu()
 {
+    std::lock_guard lg{ _own_mutex };
     if (!_glu && _state != RBC_State::DECAYED) {
         _glu = true;
         return true;
@@ -195,21 +206,25 @@ bool RBC::store_glu()
 
 bool RBC::check_o2()
 {
+    std::lock_guard lg{ _own_mutex };
     return _o2;
 }
 
 bool RBC::check_glu()
 {
+    std::lock_guard lg{ _own_mutex };
     return _glu;
 }
 
 bool RBC::check_co2()
 {
+    std::lock_guard lg{ _own_mutex };
     return _co2;
 }
 
 void RBC::destroy()
 {
+    std::lock_guard lg{ _own_mutex };
     _dead = true;
 }
 
@@ -224,6 +239,7 @@ void RBC::decay()
 
 void RBC::update_state()
 {
+    std::lock_guard lg{ _own_mutex };
     if (_days_left == 0 && _state != RBC_State::DECAYED) {
         _state = RBC_State::DECAYED;
     } else if (_days_left <= 30 && _state != RBC_State::OLD) {
@@ -240,33 +256,40 @@ std::mutex& RBC::get_rbc_mutex()
 
 bool RBC::get_random_direction()
 {
+    std::lock_guard lg{ _own_mutex };
     std::bernoulli_distribution dist(0.5);
     return dist(_gen);
 }
 
 std::tuple<unsigned, unsigned, unsigned, unsigned> RBC::get_dpositions()
 {
+    std::lock_guard lg{ _own_mutex };
     return { _pos_x, _pos_y, _prev_x, _prev_y };
 }
 
 std::tuple<bool, bool, bool> RBC::get_dresources()
 {
+    std::lock_guard lg{ _own_mutex };
     return { _o2, _glu, _co2 };
 }
 
 RBC_State RBC::get_dstate()
 {
+    std::lock_guard lg{ _own_mutex };
     return { _state };
 }
 
 void RBC::run()
 {
-    std::unique_lock lock{ _start_mutex };
-    _start_cv.wait(lock);
-    lock.unlock();
+    if (_state == RBC_State::INIT) {
+        std::unique_lock lock{ _start_mutex };
+        _start_cv.wait(lock);
+        lock.unlock();
+        _state = RBC_State::OLD;
+    }
+
     while (!_kill_switch && !_dead.load()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        // std::lock_guard lg{ _own_mutex };
         decay();
     }
 }

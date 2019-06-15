@@ -21,38 +21,35 @@ Organ::Organ(unsigned pos_y, Display& controller, std::list<RBC>& rbc_pool, std:
 
 void Organ::nourish()
 {
-    if (_health < 50) {
-        std::lock_guard lg{ _list_mutex };
-        for (auto& rbc : _rbc_pool) {
-            if (_o2 && _glu)
-                break;
-            //std::lock_guard lg{ rbc.get_rbc_mutex() };
-            std::scoped_lock scl{ _list_mutex, rbc.get_rbc_mutex() };
-            if (rbc.get_y() == _y && rbc.get_x() >= 10 && rbc.get_x() <= 61) {
-                if (!_o2 && rbc.get_o2()) {
-                    _o2 = true;
-                    _low_o2_count = 0;
-                } else {
-                    _low_o2_count += 1;
-                }
-                if (!_glu && rbc.get_glu()) {
-                    _glu = true;
-                    _low_glu_count = 0;
-                } else {
-                    _low_glu_count += 1;
-                }
-                if (_co2 && rbc.store_co2()) {
-                    _co2 = false;
-                }
-            }
-        }
-        if (_o2 && _glu && !_co2) {
-            _health = 100;
-            _o2 = false;
-            _glu = false;
-            _co2 = true;
-        }
-    }
+    // if (_health < 50) {
+    //     for (auto& rbc : _rbc_pool) {
+    //         if (_o2 && _glu)
+    //             break;
+    //         if (rbc.get_y() == _y && rbc.get_x() >= 10 && rbc.get_x() <= 61) {
+    //             if (!_o2 && rbc.get_o2()) {
+    //                 _o2 = true;
+    //                 _low_o2_count = 0;
+    //             } else {
+    //                 _low_o2_count += 1;
+    //             }
+    //             if (!_glu && rbc.get_glu()) {
+    //                 _glu = true;
+    //                 _low_glu_count = 0;
+    //             } else {
+    //                 _low_glu_count += 1;
+    //             }
+    //             if (_co2 && rbc.store_co2()) {
+    //                 _co2 = false;
+    //             }
+    //         }
+    //     }
+    //     if (_o2 && _glu && !_co2) {
+    //         _health = 100;
+    //         _o2 = false;
+    //         _glu = false;
+    //         _co2 = true;
+    //     }
+    // }
 }
 
 void Organ::health_decay()

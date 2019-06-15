@@ -37,7 +37,7 @@ class RBC {
     RBC_State _state;
 
 public:
-    RBC(unsigned start_x, unsigned start_y, Display& controller);
+    RBC(unsigned start_x, unsigned start_y, Display& controller, RBC_State init_state);
     ~RBC();
     void advance_pos();
     void calc_new_pos();

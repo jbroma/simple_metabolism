@@ -14,14 +14,14 @@ Lungs::~Lungs()
 void Lungs::respirate()
 {
     // std::lock_guard lg{ _list_mutex };
-    for (auto it = _rbc_pool.begin(); it != _rbc_pool.end(); ++it) {
-        if (it->get_y() == _y && it->get_x() >= 10 && it->get_x() <= 61) {
-            std::lock_guard rbc_lg{ it->get_rbc_mutex() };
-            it->get_co2();
-            it->store_o2();
-            break;
-        }
-    }
+    // for (auto it = _rbc_pool.begin(); it != _rbc_pool.end(); ++it) {
+    //     if (it->get_y() == _y && it->get_x() >= 10 && it->get_x() <= 61) {
+    //         std::lock_guard rbc_lg{ it->get_rbc_mutex() };
+    //         it->get_co2();
+    //         it->store_o2();
+    //         break;
+    //     }
+    // }
 }
 
 void Lungs::run()
@@ -39,7 +39,7 @@ void Lungs::run()
         }
         respirate();
         nourish();
-        health_decay();
-        inform_brain();
+        health_decay(); // no need for mutex
+        inform_brain(); // no need for mutex
     }
 }
