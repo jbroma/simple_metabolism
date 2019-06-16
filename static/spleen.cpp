@@ -18,8 +18,7 @@ void Spleen::destroy_rbc()
         if (it->get_y() == _y && it->get_x() >= 10 && it->get_x() <= 61) {
             if (it->get_dstate() == RBC_State::OLD || it->get_dstate() == RBC_State::DECAYED) {
                 it->destroy();
-                _rbc_pool.erase(it);
-                break;
+                it = _rbc_pool.erase(it);
             }
         }
     }
@@ -32,15 +31,15 @@ void Spleen::run()
     _dp_controller.get_start_cv().wait(lock);
     lock.unlock();
     while (!_kill_switch) {
-        for (int i = 0; i < 5; ++i) {
+        for (int i = 0; i <= 5; ++i) {
             sleep_time = static_cast<int>(200 / _metabolism_speed);
             std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
-            health_decay();
-            std::lock_guard lg{ _dp_controller.get_display_mutex() };
-            _dp_controller.update_organ_state("SPLEEN", i * 10, _health, get_resources_state());
+            nourish();
+            //std::lock_guard lg{ _dp_controller.get_display_mutex() };
+            _dp_controller.update_organ_state("SPLEEN", i * 20, _health, get_resources_state());
         }
         destroy_rbc();
-        nourish();
+        health_decay();
         inform_brain();
     }
 }

@@ -349,29 +349,8 @@ WINDOW* Display::create_right_side_vessels(int vpos)
     return vessels;
 }
 
-// void Display::update_pwin(unsigned id, PhilosopherState state, int percentage)
-// {
-//     WINDOW* win = _pwindows[id];
-//     wattron(win, COLOR_PAIR(_color_counter + id * 5));
-//     mvwprintw(win, 0, 1, "%d", id);
-//     mvwprintw(win, 0, 15, "%s", state_to_str(state));
-//     if (percentage >= 0) {
-//         mvwprintw(win, 0, 30, "%02d%%", percentage);
-//         for (int i = 0; i < 20; ++i) {
-//             if (percentage / 5 > i)
-//                 mvwprintw(win, 0, 35 + i, "|");
-//             else
-//                 mvwprintw(win, 0, 35 + i, ".");
-//         }
-//     } else {
-//         mvwprintw(win, 0, 30, "N/A");
-//         mvwprintw(win, 0, 35, "--------------------");
-//     }
-
 void Display::update_rbc_position(std::tuple<unsigned, unsigned, unsigned, unsigned> positions, std::tuple<bool, bool, bool> resources, RBC_State state)
 {
-    // caller must lock list and display!!
-    // decide which window & adjust position
     auto rbc_x = std::get<0>(positions), rbc_y = std::get<1>(positions);
     auto rbc_prev_x = std::get<2>(positions), rbc_prev_y = std::get<3>(positions);
     delete_prev_rbc_pos(rbc_prev_x, rbc_prev_y);
@@ -383,6 +362,7 @@ void Display::delete_prev_rbc_pos(unsigned pos_x, unsigned pos_y)
 {
     // mvwprintw(_windows.at("LUNGS"), 2, 1, "PrevX:%2d\tPrevY:%2d", pos_x, pos_y);
     // wrefresh(_windows.at("LUNGS"));
+    std::lock_guard lg{ _display_mutex };
     if (pos_x < 8) {
         mvwaddch(_windows.at("LVESSELS"), pos_y + 1, pos_x + 2, ' ');
         wrefresh(_windows.at("LVESSELS"));
@@ -460,6 +440,7 @@ int Display::get_rbc_color(std::tuple<bool, bool, bool> resources, RBC_State sta
 
 void Display::draw_rbc_in_window(WINDOW* win, int pos_y, int pos_x, int color)
 {
+    std::lock_guard lg{ _display_mutex };
     wattron(win, COLOR_PAIR(color));
     mvwaddch(win, pos_y, pos_x, ACS_DIAMOND);
     wattroff(win, COLOR_PAIR(color));
@@ -468,6 +449,7 @@ void Display::draw_rbc_in_window(WINDOW* win, int pos_y, int pos_x, int color)
 
 void Display::update_heart_state(int health, std::tuple<bool, bool, bool> res)
 {
+    std::lock_guard lg{ _display_mutex };
     WINDOW* win = _windows.at("HEART");
     mvwprintw(win, 1, 46, "%03d%%", health);
     mvwprintw(win, 2, 1, "O2: %d\tGLUCOSE: %d\tCO2: %d", std::get<0>(res), std::get<1>(res), std::get<2>(res));
@@ -476,21 +458,24 @@ void Display::update_heart_state(int health, std::tuple<bool, bool, bool> res)
 
 void Display::update_organ_state(std::string organ, int percentage, int health, std::tuple<bool, bool, bool> res)
 {
+    std::lock_guard lg{ _display_mutex };
     WINDOW* win = _windows.at(organ);
     mvwprintw(win, 1, 46, "%03d%%", health);
-    mvwprintw(win, 2, 1, "O2: %d\tGLUCOSE: %d\tCO2: %d", std::get<0>(res), std::get<1>(res), std::get<2>(res));
+    mvwprintw(win, 2, 2, "O2: %d\tGLUCOSE: %d\tCO2: %d", std::get<0>(res), std::get<1>(res), std::get<2>(res));
     update_progress_bar(win, percentage);
     wrefresh(win);
 }
 
 void Display::update_progress_bar(WINDOW* win, int percentage)
 {
-    mvwprintw(win, 3, 1, "Task status:");
+    mvwprintw(win, 3, 2, "Task status:");
+    mvwaddch(win, 3, 29, '[');
+    mvwaddch(win, 3, 50, ']');
     for (int i = 0; i < 20; ++i) {
         if (percentage / 5 > i)
-            mvwprintw(win, 3, 25 + i, "#");
+            mvwaddch(win, 3, 30 + i, '#');
         else
-            mvwprintw(win, 3, 25 + i, ".");
+            mvwaddch(win, 3, 30 + i, '-');
     }
 }
 

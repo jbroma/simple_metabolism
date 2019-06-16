@@ -25,15 +25,14 @@ void BoneMarrow::run()
     _dp_controller.get_start_cv().wait(lock);
     lock.unlock();
     while (!_kill_switch) {
-        for (int i = 0; i < 20; ++i) {
+        for (int i = 0; i <= 20; ++i) {
             sleep_time = static_cast<int>(100 / _metabolism_speed);
             std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
-
-            std::lock_guard lg{ _dp_controller.get_display_mutex() };
+            nourish();
+            //std::lock_guard lg{ _dp_controller.get_display_mutex() };
             _dp_controller.update_organ_state("BONE MARROW", i * 5, _health, get_resources_state());
         }
         create_rbc();
-        nourish();
         health_decay();
         inform_brain();
     }

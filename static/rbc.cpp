@@ -25,16 +25,16 @@ RBC::RBC(unsigned start_x, unsigned start_y, Display& controller, RBC_State init
 RBC::~RBC()
 {
     if (_life_thread.joinable()) {
-        _life_thread.join();
+        _life_thread.detach();
     }
 }
 
 void RBC::calc_new_pos()
 {
     static std::bernoulli_distribution first_dist(0.20);
-    static std::bernoulli_distribution second_dist(0.40);
-    static std::bernoulli_distribution third_dist(0.50);
-    static std::bernoulli_distribution fourth_dist(0.60);
+    static std::bernoulli_distribution second_dist(0.25);
+    static std::bernoulli_distribution third_dist(0.33);
+    static std::bernoulli_distribution fourth_dist(0.50);
     std::lock_guard lg{ _own_mutex };
     if (_pos_y == 0) {
         if (_pos_x == 67) {
@@ -230,6 +230,7 @@ void RBC::destroy()
 
 void RBC::decay()
 {
+    std::lock_guard lg{ _own_mutex };
     if (_days_left > 0) {
         _days_left -= 1;
         update_state();
@@ -239,7 +240,6 @@ void RBC::decay()
 
 void RBC::update_state()
 {
-    std::lock_guard lg{ _own_mutex };
     if (_days_left == 0 && _state != RBC_State::DECAYED) {
         _state = RBC_State::DECAYED;
     } else if (_days_left <= 30 && _state != RBC_State::OLD) {

@@ -17,8 +17,7 @@ void DigestiveSystem::supply_glucose()
     std::lock_guard lg{ _list_mutex };
     for (auto it = _rbc_pool.begin(); it != _rbc_pool.end(); ++it) {
         if (it->get_y() == _y && it->get_x() >= 10 && it->get_x() <= 61) {
-            if (it->store_glu())
-                break;
+            it->store_glu();
         }
     }
 }
@@ -30,15 +29,16 @@ void DigestiveSystem::run()
     _dp_controller.get_start_cv().wait(lock);
     lock.unlock();
     while (!_kill_switch) {
-        for (int i = 0; i < 10; ++i) {
-            sleep_time = static_cast<int>(500 / _metabolism_speed);
+        for (int i = 0; i <= 10; ++i) {
+            sleep_time = static_cast<int>(20 / _metabolism_speed);
             std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
-            health_decay();
-            std::lock_guard lg{ _dp_controller.get_display_mutex() };
+            nourish();
+            //std::lock_guard lg{ _dp_controller.get_display_mutex() };
             _dp_controller.update_organ_state("DIGESTIVE SYSTEM", i * 10, _health, get_resources_state());
         }
+        health_decay();
         supply_glucose();
-        nourish();
+
         inform_brain();
     }
 }

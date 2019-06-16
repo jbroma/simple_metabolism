@@ -44,42 +44,41 @@ Brain::~Brain()
 void Brain::regulate_metabolism()
 {
     // needs lock on brain mutex
-    // std::array<Brain_Signal, 5> arr{ _lung_state, _heart_state, _digestive_state, _spleen_state, _bone_marrow_state };
-    // // for (auto state : arr) {
-    // //     if (state == Brain_Signal::ALL_GOOD) {
-    // //         _lungs.decrease_metabolism();
-    // //         _heart.decrease_metabolism();
-    // //         _digestive.decrease_metabolism();
-    // //     } else if (state == Brain_Signal::CRITICAL_HEALTH) {
-    // //         _lungs.increase_metabolism();
-    // //         _heart.increase_metabolism();
-    // //         _bone_marrow.increase_metabolism();
-    // //         _digestive.increase_metabolism();
-    // //         _spleen.increase_metabolism();
-    // //     } else if (state == Brain_Signal::LOW_O2) {
-    // //         _lungs.increase_metabolism();
-    // //         _bone_marrow.increase_metabolism();
-    // //     } else if (state == Brain_Signal::LOW_GLUCOSE) {
-    // //         _digestive.increase_metabolism();
-    // //     }
-    // // }
+    std::lock_guard lg{ _brain_mutex };
+    std::array<Brain_Signal, 5> arr{ _lung_state, _heart_state, _digestive_state, _spleen_state, _bone_marrow_state };
+    for (auto state : arr) {
+        if (state == Brain_Signal::ALL_GOOD) {
+            _lungs.decrease_metabolism();
+            _heart.decrease_metabolism();
+            _digestive.decrease_metabolism();
+        } else if (state == Brain_Signal::CRITICAL_HEALTH) {
+            _lungs.increase_metabolism();
+            _heart.increase_metabolism();
+            _bone_marrow.increase_metabolism();
+            _digestive.increase_metabolism();
+            _spleen.increase_metabolism();
+        } else if (state == Brain_Signal::LOW_O2) {
+            _lungs.increase_metabolism();
+            _bone_marrow.increase_metabolism();
+        } else if (state == Brain_Signal::LOW_GLUCOSE) {
+            _digestive.increase_metabolism();
+        }
+    }
 }
 
 void Brain::run()
 {
-    int sleep_time;
     std::unique_lock lock{ _dp_controller.get_start_mutex() };
     _dp_controller.get_start_cv().wait(lock);
     lock.unlock();
     while (!_kill_switch) {
-        for (int i = 0; i < 10; ++i) {
-            sleep_time = static_cast<int>(1000 / _metabolism_speed);
-            std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
-            health_decay();
-            std::lock_guard lg{ _dp_controller.get_display_mutex() };
+        for (int i = 0; i <= 10; ++i) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            nourish();
+            //std::lock_guard lg{ _dp_controller.get_display_mutex() };
             _dp_controller.update_organ_state("BRAIN", i * 10, _health, get_resources_state());
         }
+        health_decay();
         regulate_metabolism();
-        nourish();
     }
 }

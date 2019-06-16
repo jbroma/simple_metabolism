@@ -13,15 +13,14 @@ Lungs::~Lungs()
 
 void Lungs::respirate()
 {
-    // std::lock_guard lg{ _list_mutex };
-    // for (auto it = _rbc_pool.begin(); it != _rbc_pool.end(); ++it) {
-    //     if (it->get_y() == _y && it->get_x() >= 10 && it->get_x() <= 61) {
-    //         std::lock_guard rbc_lg{ it->get_rbc_mutex() };
-    //         it->get_co2();
-    //         it->store_o2();
-    //         break;
-    //     }
-    // }
+    std::lock_guard lg{ _list_mutex };
+    for (auto it = _rbc_pool.begin(); it != _rbc_pool.end(); ++it) {
+        if (it->get_y() == _y && it->get_x() >= 10 && it->get_x() <= 61) {
+            it->get_co2();
+            if (it->store_o2())
+                break;
+        }
+    }
 }
 
 void Lungs::run()
@@ -31,10 +30,10 @@ void Lungs::run()
     _dp_controller.get_start_cv().wait(lock);
     lock.unlock();
     while (!_kill_switch) {
-        for (int i = 0; i < 5; ++i) {
+        for (int i = 0; i <= 5; ++i) {
             sleep_time = static_cast<int>(200 / _metabolism_speed);
             std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
-            std::lock_guard lg{ _dp_controller.get_display_mutex() };
+            //std::lock_guard lg{ _dp_controller.get_display_mutex() };
             _dp_controller.update_organ_state("LUNGS", i * 20, _health, get_resources_state());
         }
         respirate();

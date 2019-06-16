@@ -34,7 +34,7 @@ class Display {
     unsigned _draw_start;
 
     std::map<std::string, WINDOW*> _windows;
-    std::deque<WINDOW*> _all_windows;
+    std::list<WINDOW*> _all_windows;
 
 public:
     Display();
