@@ -210,24 +210,6 @@ bool RBC::store_glu()
         return false;
 }
 
-bool RBC::check_o2()
-{
-    std::lock_guard lg{ _own_mutex };
-    return _o2;
-}
-
-bool RBC::check_glu()
-{
-    std::lock_guard lg{ _own_mutex };
-    return _glu;
-}
-
-bool RBC::check_co2()
-{
-    std::lock_guard lg{ _own_mutex };
-    return _co2;
-}
-
 void RBC::set_rvelocity(unsigned rv)
 {
     std::lock_guard{ _own_mutex };
@@ -260,11 +242,6 @@ void RBC::update_state()
     } else if (_days_left <= 450 && _state != RBC_State::NORMAL) {
         _state = RBC_State::NORMAL;
     }
-}
-
-std::mutex& RBC::get_rbc_mutex()
-{
-    return _own_mutex;
 }
 
 std::tuple<unsigned, unsigned, unsigned, unsigned> RBC::get_dpositions()

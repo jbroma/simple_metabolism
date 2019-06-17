@@ -43,7 +43,6 @@ public:
     std::atomic<bool>& get_kill_switch();
     std::condition_variable& get_start_cv();
     std::mutex& get_start_mutex();
-    std::mutex& get_display_mutex();
 
     void init_sequence();
     void make_color_pairs();

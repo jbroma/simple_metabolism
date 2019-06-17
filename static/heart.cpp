@@ -47,7 +47,6 @@ void Heart::run()
             sleep_time = static_cast<int>(20 / _metabolism_speed);
             std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
             pump();
-            //std::lock_guard lg{ _dp_controller.get_display_mutex() };
             _dp_controller.update_heart_state(_health, get_resources_state(), _metabolism_speed);
         }
         health_decay();

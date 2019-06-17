@@ -88,7 +88,7 @@ void Organ::inform_brain()
 
 void Organ::increase_metabolism()
 {
-    if (_metabolism_speed <= 2.0)
+    if (_metabolism_speed <= 1.6)
         _metabolism_speed = _metabolism_speed.load() * 1.1;
 }
 

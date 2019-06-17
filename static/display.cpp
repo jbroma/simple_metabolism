@@ -51,11 +51,6 @@ std::mutex& Display::get_start_mutex()
     return std::ref(_start_mutex);
 }
 
-std::mutex& Display::get_display_mutex()
-{
-    return std::ref(_display_mutex);
-}
-
 void Display::init_sequence()
 {
     initscr();

@@ -59,10 +59,6 @@ public:
     bool store_glu();
     bool store_co2();
 
-    bool check_o2();
-    bool check_glu();
-    bool check_co2();
-
     void set_rvelocity(unsigned rv);
     void pass_through_organ();
 
@@ -76,6 +72,5 @@ public:
     std::tuple<bool, bool, bool> get_dresources();
     RBC_State get_dstate();
 
-    std::mutex& get_rbc_mutex();
     void destroy();
 };
