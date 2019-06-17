@@ -12,6 +12,8 @@ public:
     ~Heart();
 
     void pump();
+    void set_pulmonary_speed(RBC& rbc);
+    void set_systemic_speed(RBC& rbc);
 
     void run();
 };

@@ -9,7 +9,8 @@
 
 class RBC {
 
-    static thread_local std::mt19937 _gen;
+    static std::mt19937 _gen;
+    static std::mutex _rbc_shared_mutex;
 
     Display& _dp_controller;
     std::atomic<bool>& _kill_switch;
@@ -30,6 +31,10 @@ class RBC {
     unsigned _next_x;
     unsigned _next_y;
 
+    unsigned _next_organ;
+
+    unsigned _reciprocal_velocity;
+
     unsigned _days_left;
     std::atomic<bool> _dead;
     std::thread _life_thread;
@@ -44,6 +49,7 @@ public:
 
     unsigned get_x();
     unsigned get_y();
+    std::pair<unsigned, unsigned> get_position();
 
     bool get_o2();
     bool get_glu();
@@ -57,10 +63,13 @@ public:
     bool check_glu();
     bool check_co2();
 
-    void decay();
+    void set_rvelocity(unsigned rv);
+    void pass_through_organ();
+
+    void health_decay();
     void update_state();
 
-    bool get_random_direction();
+    int choose_next_organ();
     void run();
 
     std::tuple<unsigned, unsigned, unsigned, unsigned> get_dpositions();

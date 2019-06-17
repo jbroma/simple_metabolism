@@ -1,6 +1,7 @@
 #include "../include/rbc.hpp"
 
-thread_local std::mt19937 RBC::_gen{};
+std::mt19937 RBC::_gen{};
+std::mutex RBC::_rbc_shared_mutex{};
 
 RBC::RBC(unsigned start_x, unsigned start_y, Display& controller, RBC_State init_state)
     : _dp_controller(controller)
@@ -14,28 +15,24 @@ RBC::RBC(unsigned start_x, unsigned start_y, Display& controller, RBC_State init
     , _glu(false)
     , _next_x(_pos_x)
     , _next_y(_pos_y)
+    , _next_organ(0)
+    , _reciprocal_velocity(50)
     , _dead(false)
     , _life_thread(&RBC::run, this)
     , _state(init_state)
 {
-    std::uniform_int_distribution<> dist(95, 120);
+    std::uniform_int_distribution<> dist(500, 800);
+    std::lock_guard lg{ _rbc_shared_mutex };
     _days_left = dist(_gen);
 }
 
 RBC::~RBC()
 {
-    if (_life_thread.joinable()) {
-        _life_thread.detach();
-    }
+    _life_thread.detach();
 }
 
 void RBC::calc_new_pos()
 {
-    static std::bernoulli_distribution first_dist(0.20);
-    static std::bernoulli_distribution second_dist(0.25);
-    static std::bernoulli_distribution third_dist(0.33);
-    static std::bernoulli_distribution fourth_dist(0.50);
-    std::lock_guard lg{ _own_mutex };
     if (_pos_y == 0) {
         if (_pos_x == 67) {
             _next_x = _pos_x;
@@ -63,6 +60,9 @@ void RBC::calc_new_pos()
             _next_y = _pos_y;
         }
     } else if (_pos_y >= 8 && _pos_y <= 9) {
+        if (_pos_y == 8) {
+            _next_organ = choose_next_organ();
+        }
         _next_x = _pos_x;
         if (_pos_x < 29) {
             _next_y = _pos_y - 1;
@@ -86,22 +86,7 @@ void RBC::calc_new_pos()
             _next_y = _pos_y - 1;
         } else if (_pos_x == 67) {
             if (_pos_y == 13 || _pos_y == 21 || _pos_y == 29 || _pos_y == 37) {
-                std::bernoulli_distribution proper_dist;
-                switch (_pos_y) {
-                case 13:
-                    proper_dist = first_dist;
-                    break;
-                case 21:
-                    proper_dist = second_dist;
-                    break;
-                case 29:
-                    proper_dist = third_dist;
-                    break;
-                case 37:
-                    proper_dist = fourth_dist;
-                    break;
-                }
-                if (proper_dist(_gen)) {
+                if ((_pos_y == 13 && _next_organ == 0) || (_pos_y == 21 && _next_organ == 1) || (_pos_y == 29 && _next_organ == 2) || (_pos_y == 37 && _next_organ == 3)) {
                     _next_x = _pos_x - 1;
                     _next_y = _pos_y;
                 } else {
@@ -124,24 +109,45 @@ void RBC::calc_new_pos()
 
 void RBC::advance_pos()
 {
-    calc_new_pos();
     std::lock_guard lg{ _own_mutex };
+    pass_through_organ();
+    calc_new_pos();
     _prev_x = _pos_x;
     _prev_y = _pos_y;
     _pos_x = _next_x;
     _pos_y = _next_y;
 }
 
+void RBC::pass_through_organ()
+{
+    if (_pos_y == 0 || _pos_y == 13 || _pos_y == 21 || _pos_y == 29 || _pos_y == 37 || _pos_y == 45) {
+        if (_pos_x == 60 || _pos_x == 50 || _pos_x == 40 || _pos_x == 30) {
+            _reciprocal_velocity *= 1.3;
+        }
+    }
+}
+
+int RBC::choose_next_organ()
+{
+    static std::uniform_int_distribution<> dist(0, 4);
+    std::lock_guard lg{ _rbc_shared_mutex };
+    return dist(_gen);
+}
+
 unsigned RBC::get_x()
 {
-    std::lock_guard lg{ _own_mutex };
     return _pos_x;
 }
 
 unsigned RBC::get_y()
 {
-    std::lock_guard lg{ _own_mutex };
     return _pos_y;
+}
+
+std::pair<unsigned, unsigned> RBC::get_position()
+{
+    std::lock_guard lg{ _own_mutex };
+    return { get_x(), get_y() };
 }
 
 bool RBC::get_o2()
@@ -222,13 +228,20 @@ bool RBC::check_co2()
     return _co2;
 }
 
+void RBC::set_rvelocity(unsigned rv)
+{
+    std::lock_guard{ _own_mutex };
+    _reciprocal_velocity = rv;
+}
+
 void RBC::destroy()
 {
     std::lock_guard lg{ _own_mutex };
     _dead = true;
+    _dp_controller.delete_prev_rbc_pos(_pos_x, _pos_y);
 }
 
-void RBC::decay()
+void RBC::health_decay()
 {
     std::lock_guard lg{ _own_mutex };
     if (_days_left > 0) {
@@ -242,9 +255,9 @@ void RBC::update_state()
 {
     if (_days_left == 0 && _state != RBC_State::DECAYED) {
         _state = RBC_State::DECAYED;
-    } else if (_days_left <= 30 && _state != RBC_State::OLD) {
+    } else if (_days_left <= 150 && _state != RBC_State::OLD) {
         _state = RBC_State::OLD;
-    } else if (_days_left <= 90 && _state != RBC_State::NORMAL) {
+    } else if (_days_left <= 450 && _state != RBC_State::NORMAL) {
         _state = RBC_State::NORMAL;
     }
 }
@@ -252,13 +265,6 @@ void RBC::update_state()
 std::mutex& RBC::get_rbc_mutex()
 {
     return _own_mutex;
-}
-
-bool RBC::get_random_direction()
-{
-    std::lock_guard lg{ _own_mutex };
-    std::bernoulli_distribution dist(0.5);
-    return dist(_gen);
 }
 
 std::tuple<unsigned, unsigned, unsigned, unsigned> RBC::get_dpositions()
@@ -289,7 +295,13 @@ void RBC::run()
     }
 
     while (!_kill_switch && !_dead.load()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        decay();
+        health_decay();
+        for (int i = 0; i < 20; ++i) {
+            if (!_dead.load() && !_kill_switch) {
+                advance_pos();
+                _dp_controller.update_rbc_position(get_dpositions(), get_dresources(), get_dstate());
+                std::this_thread::sleep_for(std::chrono::milliseconds(_reciprocal_velocity));
+            }
+        }
     }
 }

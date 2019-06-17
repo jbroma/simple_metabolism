@@ -24,5 +24,6 @@ public:
     ~Brain();
 
     void regulate_metabolism();
+    void check_rbc_pool();
     void run();
 };

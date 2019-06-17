@@ -108,6 +108,16 @@ void Display::make_color_pairs()
     init_pair(14, 18, -1);
     // decayed
     init_pair(15, 241, -1);
+    // progress bar - low
+    init_pair(16, 196, -1);
+    // progress bar - medium
+    init_pair(17, 220, -1);
+    // progress bar - high
+    init_pair(18, 154, -1);
+    // progress bar - max
+    init_pair(19, 46, -1);
+    // progress bar - empty
+    init_pair(20, 15, -1);
 }
 
 void Display::create_title_frame()
@@ -148,6 +158,7 @@ WINDOW* Display::create_organ(int vpos, const char* name, int cpair_no)
     mvwaddch(organ, 4, ORGAN_WIDTH - 1, ACS_BTEE);
     // text info
     mvwprintw(organ, 1, 2, name);
+    mvwprintw(organ, 1, 25, "MB Rate: XXX");
     mvwprintw(organ, 1, 38, "Health: XXX%%");
     wattroff(organ, COLOR_PAIR(cpair_no));
     // create vessels
@@ -179,10 +190,11 @@ WINDOW* Display::create_heart(int vpos)
     mvwaddch(heart, 9, ORGAN_WIDTH - 1, ACS_BTEE);
     // text info
     mvwprintw(heart, 1, 2, "HEART");
+    mvwprintw(heart, 1, 25, "MB Rate: XXX");
     mvwprintw(heart, 1, 38, "Health: XXX%%");
     wattroff(heart, COLOR_PAIR(4));
 
-    // left heart (marked as right heart!)
+    // left heart (right heart anatomically)
     wattron(heart, COLOR_PAIR(1));
     mvwhline(heart, 3, 1, ACS_HLINE, 20);
     mvwhline(heart, 5, 1, ACS_HLINE, 17);
@@ -201,7 +213,7 @@ WINDOW* Display::create_heart(int vpos)
     mvwaddch(heart, 5, 17, ACS_URCORNER);
     mvwaddch(heart, 6, 17, ACS_LRCORNER);
     wattroff(heart, COLOR_PAIR(1));
-    // right heart (marked as left heart!)
+    // right heart (left heart anatomically)
     wattron(heart, COLOR_PAIR(2));
     mvwhline(heart, 3, 31, ACS_HLINE, 20);
     mvwhline(heart, 5, 35, ACS_HLINE, 17);
@@ -360,8 +372,6 @@ void Display::update_rbc_position(std::tuple<unsigned, unsigned, unsigned, unsig
 
 void Display::delete_prev_rbc_pos(unsigned pos_x, unsigned pos_y)
 {
-    // mvwprintw(_windows.at("LUNGS"), 2, 1, "PrevX:%2d\tPrevY:%2d", pos_x, pos_y);
-    // wrefresh(_windows.at("LUNGS"));
     std::lock_guard lg{ _display_mutex };
     if (pos_x < 8) {
         mvwaddch(_windows.at("LVESSELS"), pos_y + 1, pos_x + 2, ' ');
@@ -394,8 +404,6 @@ void Display::delete_prev_rbc_pos(unsigned pos_x, unsigned pos_y)
 
 void Display::add_current_rbc_pos(unsigned pos_x, unsigned pos_y, int rbc_color)
 {
-    // mvwprintw(_windows.at("LUNGS"), 3, 1, "PosX:%2d\tPosY:%2d", pos_x, pos_y);
-    // wrefresh(_windows.at("LUNGS"));
     if (pos_x < 8) {
         draw_rbc_in_window(_windows.at("LVESSELS"), pos_y + 1, pos_x + 2, rbc_color);
     } else if (pos_x > 59) {
@@ -447,36 +455,58 @@ void Display::draw_rbc_in_window(WINDOW* win, int pos_y, int pos_x, int color)
     wrefresh(win);
 }
 
-void Display::update_heart_state(int health, std::tuple<bool, bool, bool> res)
+void Display::update_heart_state(int health, std::tuple<unsigned, unsigned, unsigned> res, float mb)
 {
     std::lock_guard lg{ _display_mutex };
     WINDOW* win = _windows.at("HEART");
+    mvwprintw(win, 1, 34, "%2.1f", mb);
     mvwprintw(win, 1, 46, "%03d%%", health);
-    mvwprintw(win, 2, 1, "O2: %d\tGLUCOSE: %d\tCO2: %d", std::get<0>(res), std::get<1>(res), std::get<2>(res));
+    mvwprintw(win, 2, 2, "O2: %d/6  |  GLUCOSE: %d/1  |  CO2: %d/6", std::get<0>(res), std::get<1>(res), std::get<2>(res));
     wrefresh(win);
 }
 
-void Display::update_organ_state(std::string organ, int percentage, int health, std::tuple<bool, bool, bool> res)
+void Display::update_organ_state(std::string organ, int percentage, int health, std::tuple<unsigned, unsigned, unsigned> res, float mb)
 {
     std::lock_guard lg{ _display_mutex };
     WINDOW* win = _windows.at(organ);
+    mvwprintw(win, 1, 34, "%2.1f", mb);
     mvwprintw(win, 1, 46, "%03d%%", health);
-    mvwprintw(win, 2, 2, "O2: %d\tGLUCOSE: %d\tCO2: %d", std::get<0>(res), std::get<1>(res), std::get<2>(res));
+    mvwprintw(win, 2, 2, "O2: %d/6  |  GLUCOSE: %d/1  |  CO2: %d/6", std::get<0>(res), std::get<1>(res), std::get<2>(res));
     update_progress_bar(win, percentage);
     wrefresh(win);
 }
 
 void Display::update_progress_bar(WINDOW* win, int percentage)
 {
+    int color = get_progress_bar_color(percentage);
     mvwprintw(win, 3, 2, "Task status:");
+    wattron(win, COLOR_PAIR(20));
     mvwaddch(win, 3, 29, '[');
     mvwaddch(win, 3, 50, ']');
+    wattroff(win, COLOR_PAIR(20));
     for (int i = 0; i < 20; ++i) {
-        if (percentage / 5 > i)
+        if (percentage / 5 > i) {
+            wattron(win, COLOR_PAIR(color));
             mvwaddch(win, 3, 30 + i, '#');
-        else
+            wattroff(win, COLOR_PAIR(color));
+        } else {
+            wattron(win, COLOR_PAIR(20));
             mvwaddch(win, 3, 30 + i, '-');
+            wattroff(win, COLOR_PAIR(20));
+        }
     }
+}
+
+int Display::get_progress_bar_color(int percentage)
+{
+    if (percentage < 35) {
+        return 16;
+    } else if (percentage < 75) {
+        return 17;
+    } else if (percentage < 100) {
+        return 18;
+    } else
+        return 19;
 }
 
 void Display::main_loop()

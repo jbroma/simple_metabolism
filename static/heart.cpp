@@ -1,7 +1,7 @@
 #include "../include/heart.hpp"
 
 Heart::Heart(unsigned pos_y, Display& controller, std::list<RBC>& rbc_pool, std::mutex& list_mutex)
-    : Organ(pos_y, controller, rbc_pool, std::forward<std::mutex&>(list_mutex))
+    : Organ("HEART", pos_y, controller, rbc_pool, std::forward<std::mutex&>(list_mutex))
     , _life_thread(&Heart::run, this)
 {
 }
@@ -13,12 +13,27 @@ Heart::~Heart()
 
 void Heart::pump()
 {
-    //std::scoped_lock rbc_lg{ _list_mutex, _dp_controller.get_display_mutex() };
     std::lock_guard lg{ _list_mutex };
-    for (auto it = _rbc_pool.begin(); it != _rbc_pool.end(); ++it) {
-        it->advance_pos();
-        _dp_controller.update_rbc_position(it->get_dpositions(), it->get_dresources(), it->get_dstate());
+    for (auto& rbc : _rbc_pool) {
+        auto xy = rbc.get_position();
+        if (xy.second >= 7 && xy.second <= 10) {
+            if (xy.first == 27) {
+                set_pulmonary_speed(rbc);
+            } else if (xy.first == 40) {
+                set_systemic_speed(rbc);
+            }
+        }
     }
+}
+
+void Heart::set_pulmonary_speed(RBC& rbc)
+{
+    rbc.set_rvelocity(25 / std::sqrt(_metabolism_speed));
+}
+
+void Heart::set_systemic_speed(RBC& rbc)
+{
+    rbc.set_rvelocity(20 / std::sqrt(_metabolism_speed));
 }
 
 void Heart::run()
@@ -33,7 +48,7 @@ void Heart::run()
             std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
             pump();
             //std::lock_guard lg{ _dp_controller.get_display_mutex() };
-            _dp_controller.update_heart_state(_health, get_resources_state());
+            _dp_controller.update_heart_state(_health, get_resources_state(), _metabolism_speed);
         }
         health_decay();
         nourish();

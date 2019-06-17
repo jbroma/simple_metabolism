@@ -63,7 +63,8 @@ public:
     void add_current_rbc_pos(unsigned pos_x, unsigned pos_y, int rbc_color);
     int get_rbc_color(std::tuple<bool, bool, bool> resources, RBC_State state);
     void draw_rbc_in_window(WINDOW* win, int pos_y, int pos_x, int color);
-    void update_heart_state(int health, std::tuple<bool, bool, bool> res);
-    void update_organ_state(std::string organ, int percentage, int health, std::tuple<bool, bool, bool> res);
+    void update_heart_state(int health, std::tuple<unsigned, unsigned, unsigned> res, float mb);
+    void update_organ_state(std::string organ, int percentage, int health, std::tuple<unsigned, unsigned, unsigned> res, float mb);
     void update_progress_bar(WINDOW* win, int percentage);
+    int get_progress_bar_color(int percentage);
 };
